@@ -2,12 +2,25 @@
 *.slo
 *.lo
 *.o
+*.obj
 
 # Compiled Dynamic libraries
 *.so
 *.dylib
+*.dll
 
 # Compiled Static libraries
 *.lai
 *.la
 *.a
+*.lib
+
+# Compiled executables
+*.exe
+
+# SCons artifacts
+.sconsign.dblite
+
+# Emacs stuff
+TAGS
+*~
