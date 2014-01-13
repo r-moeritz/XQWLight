@@ -5,7 +5,7 @@ About
 -----
 
 This is the XQWLight XiangQi program written by Huang Chen (Morning Yellow) and
-modified by H.H. Muller to use the WinBoard protocol.
+modified by H.G. Muller to use the WinBoard protocol.
 
 Status
 ------
@@ -14,20 +14,22 @@ I have made the following changes to the source as
 [published](http://home.hccnet.nl/h.g.muller/XQWLight.zip) by H.G. Muller:
 
  - Remove all Chinese language comments since they're of no use to me.
- - Untabify
+ - Untabify.
  - Fix inconsistent indentation. 
 
 License
 -------
 
 According to comments in the original source, the code is licensed under the
-GPLv2, so I've included the license text in this repo.
+GPLv2, so I've included the
+[full license text](https://github.com/rmoritz/XQWLight/blob/master/LICENSE) in
+this repo.
 
 Further information
 -------------------
 
 H.G. Muller has a [page](http://home.hccnet.nl/h.g.muller/XQWLight.html)
-dedicated to XQWLight. Below are the original release notes from his release:
+dedicated to XQWLight. Below are his original release notes:
 
 	                       XQWLight 0.6_WB release notes
 	
