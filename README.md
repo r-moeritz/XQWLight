@@ -15,7 +15,9 @@ I have made the following changes to the source as
 
  - Remove all Chinese language comments since they're of no use to me.
  - Untabify.
- - Fix inconsistent indentation. 
+ - Fix inconsistent indentation.
+ - Remove Win32 API dependencies by creating typedefs for DWORD et al & using
+   `clock()` instead of `GetTickCount()`.
 
 License
 -------

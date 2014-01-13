@@ -27,24 +27,18 @@
  * ------------------------------------------------------------------------
  */
 
-#include <time.h>
-#include <windows.h>
-#include <signal.h>
-#include <sstream>     // ostringstream
+#include <csignal>
+#include <ctime>
 #include <cstring>
 #include <cstdlib>
+
+typedef unsigned char  BYTE;
+typedef unsigned short WORD;
+typedef unsigned long  DWORD;
 
 int Post, Nodes;
 char
 *_xqwlight2WB( unsigned int move );
-
-#ifndef FALSE
-#  define FALSE               0
-#endif
-
-#ifndef TRUE
-#  define TRUE                1
-#endif
 
 // *** Additional variables ***
 static int         s_search_time = 1;  // In seconds (search-time)
@@ -345,11 +339,15 @@ static const BYTE cucvlPiecePos[7][256] = {
   }
 };
 
-inline BOOL IN_BOARD(int sq) {
+int elapsed_ms(clock_t initial) { // elapsed milliseconds
+  return (int) ((clock() - initial) / (double)CLOCKS_PER_SEC) * 1000;
+}
+
+inline bool IN_BOARD(int sq) {
   return ccInBoard[sq] != 0;
 }
 
-inline BOOL IN_FORT(int sq) {
+inline bool IN_FORT(int sq) {
   return ccInFort[sq] != 0;
 }
 
@@ -385,15 +383,15 @@ inline int SQUARE_FORWARD(int sq, int sd) {
   return sq - 16 + (sd << 5);
 }
 
-inline BOOL KING_SPAN(int sqSrc, int sqDst) {
+inline bool KING_SPAN(int sqSrc, int sqDst) {
   return ccLegalSpan[sqDst - sqSrc + 256] == 1;
 }
 
-inline BOOL ADVISOR_SPAN(int sqSrc, int sqDst) {
+inline bool ADVISOR_SPAN(int sqSrc, int sqDst) {
   return ccLegalSpan[sqDst - sqSrc + 256] == 2;
 }
 
-inline BOOL BISHOP_SPAN(int sqSrc, int sqDst) {
+inline bool BISHOP_SPAN(int sqSrc, int sqDst) {
   return ccLegalSpan[sqDst - sqSrc + 256] == 3;
 }
 
@@ -405,23 +403,23 @@ inline int KNIGHT_PIN(int sqSrc, int sqDst) {
   return sqSrc + ccKnightPin[sqDst - sqSrc + 256];
 }
 
-inline BOOL HOME_HALF(int sq, int sd) {
+inline bool HOME_HALF(int sq, int sd) {
   return (sq & 0x80) != (sd << 7);
 }
 
-inline BOOL AWAY_HALF(int sq, int sd) {
+inline bool AWAY_HALF(int sq, int sd) {
   return (sq & 0x80) == (sd << 7);
 }
 
-inline BOOL SAME_HALF(int sqSrc, int sqDst) {
+inline bool SAME_HALF(int sqSrc, int sqDst) {
   return ((sqSrc ^ sqDst) & 0x80) == 0;
 }
 
-inline BOOL SAME_RANK(int sqSrc, int sqDst) {
+inline bool SAME_RANK(int sqSrc, int sqDst) {
   return ((sqSrc ^ sqDst) & 0xf0) == 0;
 }
 
-inline BOOL SAME_FILE(int sqSrc, int sqDst) {
+inline bool SAME_FILE(int sqSrc, int sqDst) {
   return ((sqSrc ^ sqDst) & 0x0f) == 0;
 }
 
@@ -535,7 +533,7 @@ struct MoveStruct {
   BYTE ucpcCaptured, ucbCheck;
   DWORD dwKey;
 
-  void Set(int mv, int pcCaptured, BOOL bCheck, DWORD dwKey_) {
+  void Set(int mv, int pcCaptured, bool bCheck, DWORD dwKey_) {
     wmv = mv;
     ucpcCaptured = pcCaptured;
     ucbCheck = bCheck;
@@ -590,15 +588,15 @@ struct PositionStruct {
   int Evaluate(void) const {      
     return (sdPlayer == 0 ? vlWhite - vlBlack : vlBlack - vlWhite) + ADVANCED_VALUE;
   }
-  BOOL InCheck(void) const {      
+  bool InCheck(void) const {      
     return mvsList[nMoveNum - 1].ucbCheck;
   }
-  BOOL Captured(void) const {     
+  bool Captured(void) const {     
     return mvsList[nMoveNum - 1].ucpcCaptured != 0;
   }
   int MovePiece(int mv);                      
   void UndoMovePiece(int mv, int pcCaptured); 
-  BOOL MakeMove(int mv);                      
+  bool MakeMove(int mv);                      
   void UndoMakeMove(void) {                   
     nDistance --;
     nMoveNum --;
@@ -609,7 +607,7 @@ struct PositionStruct {
     DWORD dwKey;
     dwKey = zobr.dwKey;
     ChangeSide();
-    mvsList[nMoveNum].Set(0, 0, FALSE, dwKey);
+    mvsList[nMoveNum].Set(0, 0, false, dwKey);
     nMoveNum ++;
     nDistance ++;
   }
@@ -619,10 +617,10 @@ struct PositionStruct {
     ChangeSide();
   }
   
-  int GenerateMoves(int *mvs, BOOL bCapture = FALSE) const;
-  BOOL LegalMove(int mv) const;               
-  BOOL Checked(void) const;                   
-  BOOL IsMate(void);                          
+  int GenerateMoves(int *mvs, bool bCapture = false) const;
+  bool LegalMove(int mv) const;               
+  bool Checked(void) const;                   
+  bool IsMate(void);                          
   int DrawValue(void) const {                 
     return (nDistance & 1) == 0 ? -DRAW_VALUE : DRAW_VALUE;
   }
@@ -633,7 +631,7 @@ struct PositionStruct {
       ((nRepStatus & 4) == 0 ? 0 : BAN_VALUE - nDistance);
     return vlReturn == 0 ? DrawValue() : vlReturn;
   }
-  BOOL NullOkay(void) const {                 
+  bool NullOkay(void) const {                 
     return (sdPlayer == 0 ? vlWhite : vlBlack) > NULL_MARGIN;
   }
   void Mirror(PositionStruct &posMirror) const; 
@@ -687,7 +685,7 @@ void PositionStruct::UndoMovePiece(int mv, int pcCaptured) {
   }
 }
 
-BOOL PositionStruct::MakeMove(int mv) {
+bool PositionStruct::MakeMove(int mv) {
   int pcCaptured;
   DWORD dwKey;
 
@@ -695,18 +693,18 @@ BOOL PositionStruct::MakeMove(int mv) {
   pcCaptured = MovePiece(mv);
   if (Checked()) {
     UndoMovePiece(mv, pcCaptured);
-    return FALSE;
+    return false;
   }
   ChangeSide();
   mvsList[nMoveNum].Set(mv, pcCaptured, Checked(), dwKey);
   nMoveNum ++;
   nDistance ++;
-  return TRUE;
+  return true;
 }
 
-const BOOL GEN_CAPTURE = TRUE;
+const bool GEN_CAPTURE = true;
 
-int PositionStruct::GenerateMoves(int *mvs, BOOL bCapture) const {
+int PositionStruct::GenerateMoves(int *mvs, bool bCapture) const {
   int i, j, nGenMoves, nDelta, sqSrc, sqDst;
   int pcSelfSide, pcOppSide, pcSrc, pcDst;
 
@@ -865,7 +863,7 @@ int PositionStruct::GenerateMoves(int *mvs, BOOL bCapture) const {
   return nGenMoves;
 }
 
-BOOL PositionStruct::LegalMove(int mv) const {
+bool PositionStruct::LegalMove(int mv) const {
   int sqSrc, sqDst, sqPin;
   int pcSelfSide, pcSrc, pcDst, nDelta;
   
@@ -873,13 +871,13 @@ BOOL PositionStruct::LegalMove(int mv) const {
   pcSrc = ucpcSquares[sqSrc];
   pcSelfSide = SIDE_TAG(sdPlayer);
   if ((pcSrc & pcSelfSide) == 0) {
-    return FALSE;
+    return false;
   }
   
   sqDst = DST(mv);
   pcDst = ucpcSquares[sqDst];
   if ((pcDst & pcSelfSide) != 0) {
-    return FALSE;
+    return false;
   }
   
   switch (pcSrc - pcSelfSide) {
@@ -900,7 +898,7 @@ BOOL PositionStruct::LegalMove(int mv) const {
     } else if (SAME_FILE(sqSrc, sqDst)) {
       nDelta = (sqDst < sqSrc ? -16 : 16);
     } else {
-      return FALSE;
+      return false;
     }
     sqPin = sqSrc + nDelta;
     while (sqPin != sqDst && ucpcSquares[sqPin] == 0) {
@@ -915,19 +913,19 @@ BOOL PositionStruct::LegalMove(int mv) const {
       }
       return sqPin == sqDst;
     } else {
-      return FALSE;
+      return false;
     }
   case PIECE_PAWN:
     if (AWAY_HALF(sqDst, sdPlayer) && (sqDst == sqSrc - 1 || sqDst == sqSrc + 1)) {
-      return TRUE;
+      return true;
     }
     return sqDst == SQUARE_FORWARD(sqSrc, sdPlayer);
   default:
-    return FALSE;
+    return false;
   }
 }
 
-BOOL PositionStruct::Checked() const {
+bool PositionStruct::Checked() const {
   int i, j, sqSrc, sqDst;
   int pcSelfSide, pcOppSide, pcDst, nDelta;
   pcSelfSide = SIDE_TAG(sdPlayer);
@@ -939,11 +937,11 @@ BOOL PositionStruct::Checked() const {
     }
     
     if (ucpcSquares[SQUARE_FORWARD(sqSrc, sdPlayer)] == pcOppSide + PIECE_PAWN) {
-      return TRUE;
+      return true;
     }
     for (nDelta = -1; nDelta <= 1; nDelta += 2) {
       if (ucpcSquares[sqSrc + nDelta] == pcOppSide + PIECE_PAWN) {
-        return TRUE;
+        return true;
       }
     }
 
@@ -955,7 +953,7 @@ BOOL PositionStruct::Checked() const {
       for (j = 0; j < 2; j ++) {
         pcDst = ucpcSquares[sqSrc + ccKnightCheckDelta[i][j]];
         if (pcDst == pcOppSide + PIECE_KNIGHT) {
-          return TRUE;
+          return true;
         }
       }
     }
@@ -967,7 +965,7 @@ BOOL PositionStruct::Checked() const {
         pcDst = ucpcSquares[sqDst];
         if (pcDst != 0) {
           if (pcDst == pcOppSide + PIECE_ROOK || pcDst == pcOppSide + PIECE_KING) {
-            return TRUE;
+            return true;
           }
           break;
         }
@@ -978,19 +976,19 @@ BOOL PositionStruct::Checked() const {
         int pcDst = ucpcSquares[sqDst];
         if (pcDst != 0) {
           if (pcDst == pcOppSide + PIECE_CANNON) {
-            return TRUE;
+            return true;
           }
           break;
         }
         sqDst += nDelta;
       }
     }
-    return FALSE;
+    return false;
   }
-  return FALSE;
+  return false;
 }
 
-BOOL PositionStruct::IsMate(void) {
+bool PositionStruct::IsMate(void) {
   int i, nGenMoveNum, pcCaptured;
   int mvs[MAX_GEN_MOVES];
 
@@ -999,20 +997,20 @@ BOOL PositionStruct::IsMate(void) {
     pcCaptured = MovePiece(mvs[i]);
     if (!Checked()) {
       UndoMovePiece(mvs[i], pcCaptured);
-      return FALSE;
+      return false;
     } else {
       UndoMovePiece(mvs[i], pcCaptured);
     }
   }
-  return TRUE;
+  return true;
 }
 
 int PositionStruct::RepStatus(int nRecur) const {
-  BOOL bSelfSide, bPerpCheck, bOppPerpCheck;
+  bool bSelfSide, bPerpCheck, bOppPerpCheck;
   const MoveStruct *lpmvs;
 
-  bSelfSide = FALSE;
-  bPerpCheck = bOppPerpCheck = TRUE;
+  bSelfSide = false;
+  bPerpCheck = bOppPerpCheck = true;
   lpmvs = mvsList + nMoveNum - 1;
   while (lpmvs->wmv != 0 && lpmvs->ucpcCaptured == 0) {
     if (bSelfSide) {
@@ -1056,7 +1054,7 @@ static struct {
   HDC hdc, hdcTmp;                              
   HBITMAP bmpBoard, bmpSelected, bmpPieces[24]; 
   int sqSelected, mvLast;                       
-  BOOL bFlipped, bGameOver;                     
+  bool bFlipped, bGameOver;                     
 } Xqwl;
 #endif
 
@@ -1121,7 +1119,7 @@ static int CompareBook(const void *lpbk1, const void *lpbk2) {
 static int SearchBook(void) {
   int i, vl, nBookMoves, mv;
   int mvs[MAX_GEN_MOVES], vls[MAX_GEN_MOVES];
-  BOOL bMirror;
+  bool bMirror;
   BookItem bkToSearch, *lpbk;
   PositionStruct posMirror;
     
@@ -1129,12 +1127,12 @@ static int SearchBook(void) {
     return 0;
   }
   
-  bMirror = FALSE;
+  bMirror = false;
   bkToSearch.dwLock = pos.zobr.dwLock1;
   lpbk = (BookItem *) bsearch(&bkToSearch, Search.BookTable, Search.nBookSize, sizeof(BookItem), CompareBook);
   
   if (lpbk == NULL) {
-    bMirror = TRUE;
+    bMirror = true;
     pos.Mirror(posMirror);
     bkToSearch.dwLock = posMirror.zobr.dwLock1;
     lpbk = (BookItem *) bsearch(&bkToSearch, Search.BookTable, Search.nBookSize, sizeof(BookItem), CompareBook);
@@ -1178,7 +1176,7 @@ static int SearchBook(void) {
 }
 
 static int ProbeHash(int vlAlpha, int vlBeta, int nDepth, int &mv) {
-  BOOL bMate; 
+  bool bMate; 
   HashItem hsh;
 
   hsh = Search.HashTable[pos.zobr.dwKey & (HASH_SIZE - 1)];
@@ -1187,19 +1185,19 @@ static int ProbeHash(int vlAlpha, int vlBeta, int nDepth, int &mv) {
     return -MATE_VALUE;
   }
   mv = hsh.wmv;
-  bMate = FALSE;
+  bMate = false;
   if (hsh.svl > WIN_VALUE) {
     if (hsh.svl < BAN_VALUE) {
       return -MATE_VALUE; 
     }
     hsh.svl -= pos.nDistance;
-    bMate = TRUE;
+    bMate = true;
   } else if (hsh.svl < -WIN_VALUE) {
     if (hsh.svl > -BAN_VALUE) {
       return -MATE_VALUE; 
     }
     hsh.svl += pos.nDistance;
-    bMate = TRUE;
+    bMate = true;
   }
   if (hsh.ucDepth >= nDepth || bMate) {
     if (hsh.ucFlag == HASH_BETA) {
@@ -1385,9 +1383,9 @@ static int SearchQuiesc(int vlAlpha, int vlBeta) {
   return vlBest == -MATE_VALUE ? pos.nDistance - MATE_VALUE : vlBest;
 }
 
-const BOOL NO_NULL = TRUE;
+const bool NO_NULL = true;
 
-static int SearchFull(int vlAlpha, int vlBeta, int nDepth, BOOL bNoNull = FALSE) {
+static int SearchFull(int vlAlpha, int vlBeta, int nDepth, bool bNoNull = false) {
   int nHashFlag, vl, vlBest;
   int mv, mvBest, mvHash, nNewDepth;
   SortStruct Sort;
@@ -1501,13 +1499,13 @@ static int SearchRoot(int nDepth) {
 }
 
 static void SearchMain(void) {
-  int i, t, vl, nGenMoves;
+  int i, vl, nGenMoves;
   int mvs[MAX_GEN_MOVES];
   
   memset(Search.nHistoryTable, 0, 65536 * sizeof(int));       
   memset(Search.mvKillers, 0, LIMIT_DEPTH * 2 * sizeof(int)); 
   memset(Search.HashTable, 0, HASH_SIZE * sizeof(HashItem));  
-  t = GetTickCount();       
+  clock_t t = clock();
   pos.nDistance = 0; 
   
   Search.mvResult = SearchBook();
@@ -1540,9 +1538,9 @@ static void SearchMain(void) {
       break;
     }
     
-    float elapse = (GetTickCount() - t)/10.;
-    if(Post) printf("%2d %6d %6.0f %8d %s\n", i, 4*vl, elapse, Nodes, _xqwlight2WB( Search.mvResult )),fflush(stdout);
-    if ( GetTickCount() - t > s_search_time ) {
+    float elapse = elapsed_ms(t)/10.;
+    if (Post) printf("%2d %6d %6.0f %8d %s\n", i, 4*vl, elapse, Nodes, _xqwlight2WB( Search.mvResult )),fflush(stdout);
+    if ( elapsed_ms(t) > s_search_time ) {
       break;
     }
   }
@@ -1666,7 +1664,8 @@ int Randomize;
 int Fifty;
 int UnderProm;
 
-int Ticks, tlim, tlim2;
+clock_t Ticks;
+int tlim;
 
 int K,I,Q,O,S,L,M,b[10],U,A[10],N,R;
 
@@ -1769,16 +1768,15 @@ int main(int argc, char **argv)
       /* the game have to be done in this time. */
       /* If MaxMoves=1 any leftover time is lost*/
       char *res;
-      Ticks = GetTickCount();
+      Ticks = clock();
       m = MovesLeft<=0 ? 40 : MovesLeft;
       tlim = (int)(0.5*(TimeLeft+(m-1)*TimeInc)/(m+7));
-      tlim2 = 2*tlim;
       Set_search_time(tlim); Nodes = 0;
       if (res = generate_move()) {
         Side ^= COLOR;
 
         printf("move %s\n", res);
-        m = GetTickCount() - Ticks;
+        m = elapsed_ms(Ticks);
 
         /* time-control accounting */
         TimeLeft -= m;
