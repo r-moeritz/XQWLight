@@ -1,19 +1,19 @@
 import platform
 import os
 
-ccflags = '-O3 -msse2'
-ldflags = '--static'
+ldflags = ''
 source  = ['XQWLight.cpp']
 target  = 'XQWLight'
 
 if platform.system() == 'Windows':
-    env = Environment(tools = ['mingw'],
-                      CCFLAGS = ccflags,
-                      ENV = os.environ)
+    ccflags  = '/DWIN32 /EHsc /O2 /Gy'
+    env      = Environment(CCFLAGS = ccflags,
+                           ENV     = os.environ)
 else:
-    env = Environment(CCFLAGS = ccflags,
-                      ENV = os.environ)
+    ccflags = '-O3 -msse2'
+    env     = Environment(CCFLAGS = ccflags,
+                          ENV     = os.environ)
 
-env.Program(target = target,
-            source = source,
+env.Program(target    = target,
+            source    = source,
             LINKFLAGS = ldflags)
